@@ -1,6 +1,3 @@
-% CPSC 312 Calculus and Algebra in Prolog
-% Copyright D. Poole 2019. Released under GPL https://www.gnu.org/licenses/gpl-3.0.en.html
-  
 % An expression can include algebaic variables, which are Prolog constants
 
 %eval(Exp, Env, V) is true if expression Exp evaluates to V given environment Env
@@ -33,10 +30,15 @@ eval(log(A),Env,V) :-
     V is log(VA).
 eval(exp(A),Env,V) :-
     eval(A,Env,VA),
-    V is exp(VA).
+    V is exp(VA). 
 eval(sigmoid(A),Env,V) :-
     eval(A,Env,VA),
     V is 1/(1+exp(-VA)).
+
+eval(A/B,Env,V) :-
+  eval(A,Env,VA), eval(B,End,VB),
+  V is A/B.
+
 
 % try:
 % eval(aa*aa+b*11, [val(aa,3), val(b,7), val(dd,23)], V).
@@ -58,8 +60,6 @@ deriv(A*B,X,A*DB+B*DA) :-
 deriv(A/B,X,(B*DA-A*DB)/(B*B)) :-
     deriv(A,X,DA),
     deriv(B,X,DB).
-
-antiderivative(X,Y) :- antid(Z,x,Y),simplify(Z,X).
 
 deriv(-A,X,-DA) :-
     deriv(A,X,DA).
@@ -207,9 +207,11 @@ antisimplify(X,1*X^1).
 antisimplify((C*X),(C*X^1)) :- atomic(C).
 antisimplify((X^C),(1*X^C)) :- atomic(C).
 
+%Integration 
+
 % integ(E,X,IE) is true if IE is the indefinite integral of E with respect to X
 
-% axioms
+% axioms for Integrals
 integ(C,X,C*X) :- atomic(C), dif(C,X).
 integ(0,_,0).
 integ(X,X,(1/2)*X^2).
@@ -217,6 +219,7 @@ integ(C*X,X,C*I) :- atomic(C), integ(X,X,I).
 integ(X*C,X,C*I) :- atomic(C), integ(X,X,I).
 integ((A/B)*X,X,(A/B)*I) :- atomic(A),atomic(B),integ(X,X,I).
 integ(X*(A/B),X,(A/B)*I) :- atomic(A),atomic(B),integ(X,X,I).
+
 
 
 integ(A+B,X,IA + IB):- integ(A,X,IA),integ(B,X,IB).
@@ -233,7 +236,7 @@ integ(((A*X+B)^N ) * X ,X,(( A*X + B) ^ ( N + 1))/( A * ( N + 1 ) )).
 integ(X^A,X,(1/(A+1))*X^(A+1)) :- atomic(A), dif(A,-1).
 
 
-% functions 
+% Integrals of elementary functions 
 integ(exp(X),X,exp(X)).
 integ(exp(B*X),X,exp(B*X)/B) :- atomic(B).
 integ(ln(X),X,X*ln(X)-X).
@@ -250,16 +253,37 @@ integ( cot(X) , X , ln(sin(X)) ).
 integ(cosec(X)^2 , X , -cot(X) ).
 integ( sec(X) * tan(X) , X , sec(X) ).
 integ( cosec(X) * cot(X) , X , -cosec(X) ).
-integ( 1/(A*X+B) , X , (1/A) * ln(A*X+B) ).
+integ( C/(A*X+B) , X , C*(1/A) * ln(A*X+B))).
 integ( exp(A*X+B) , X , (1/A) * exp(A*X+B) ).
 integ( 1/sqrt(1-X^2) , X , arcsin(X) ).
 integ( 1/sqrt(1+X^2) , X , arctan(X) ).
 integ( 1/(X*sqrt(X^2-1)) , X , arcsec(X) ).
-integ( 1/(X^2-A^2) , X , (1/2*A) * ln( (X-A) / (X+A) ) ).
-integ( 1/(A^2-X^2) , X , (1/2*A) * ln( (A+X) / (A-X) ) ).
-integ( 1/(X^2+A^2) , X , (1/A)* arctan(X/A) ).
-integ( 1/sqrt(X^2-A^2) , X , ln( X+sqrt(X^2-A^2) ) ).
-integ( 1/sqrt(A^2-X^2) , X , arcsin(X/A) ).
-integ( 1/sqrt(A^2+X^2) , X , ln(X+sqrt(X^2+A^2)) ).
+integ( C/(X^2-A^2) , X , (C/2*A) * ln( (X-A) / (X+A) ) ).
+integ( C/(A^2-X^2) , X , (C/2*A) * ln( (A+X) / (A-X) ) ).
+integ( C/(X^2+A^2) , X , (C/A)* arctan(X/A) ).
+integ( C/sqrt(X^2-A^2) , X , C*ln( X+sqrt(X^2-A^2) ) ).
+integ( C/sqrt(A^2-X^2) , X , C*arcsin(X/A) ).
+integ( C/sqrt(A^2+X^2) , X , C*ln(X+sqrt(X^2+A^2)) ).
 
+
+%Attempt at Integratio by Parts
 integ(U*DV,X,U*V- IVDU) :- deriv(V,X,DV), deriv(U,X,DU), integ(V*DU,X,IVDU).
+
+% Definitive Integral defintegis true if the definite integral of F with respect to Env is V.
+% Env is a triplet val(X,A,B) which is the integration variable, the lower limit, and upper limit
+
+definteg(F,X,A,B,I) :- 
+  integ(F,X,II),
+  eval(II,[val(X,A)],IA), eval(II,[val(X,B)],IB), I is IB-IA.
+
+% examples to try for demo: 
+% integ(x,x,X).
+% integ(x^2,x,X).
+% integ(2*x^2,x,X).
+% integ(-x,x,X).
+% integ(sin(x),x,X).
+% integ(3*cos(x),x,X).
+% integ(cos(3*x),x,X).
+% integ(1/sqrt(3^2-x^2),x,X).
+% integ(4/sqrt(4^2-x^2),x,X).
+$ definteg(x^5-3*x^2+8,x,-4,8,X).
